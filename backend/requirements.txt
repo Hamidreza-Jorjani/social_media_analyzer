@@ -1,0 +1,44 @@
+# FastAPI and Server
+fastapi
+uvicorn[standard]
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+
+# Database
+sqlalchemy
+asyncpg
+alembic
+psycopg2-binary
+redis
+
+# HTTP Client
+httpx
+aiohttp
+
+# Validation and Settings
+pydantic
+pydantic-settings
+email-validator
+
+# Celery for background tasks
+celery
+
+# Utilities
+python-dateutil
+orjson
+
+# Logging
+loguru
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+aiosqlite
+
+# Development
+black
+isort
+flake8
+mypy
