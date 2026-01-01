@@ -4,7 +4,7 @@ uvicorn[standard]
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
-
+bcrypt
 # Database
 sqlalchemy
 asyncpg

@@ -1,0 +1,26 @@
+services:
+  brain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: persian_analytics_brain
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - DEBUG=true
+      - SIMULATE_GPU=true
+    volumes:
+      - ./app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+networks:
+  default:
+    name: backend_app_network
+    external: true
