@@ -8,8 +8,11 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-BASE_URL="http://localhost:8000/api/v1"
-BRAIN_URL="http://localhost:8001"
+BACKEND_PORT=18000
+BRAIN_PORT=18001
+
+BASE_URL="http://localhost:${BACKEND_PORT}/api/v1"
+BRAIN_URL="http://localhost:${BRAIN_PORT}"
 
 # Check if jq is installed
 if ! command -v jq &> /dev/null; then
@@ -17,7 +20,6 @@ if ! command -v jq &> /dev/null; then
     sudo apt-get update && sudo apt-get install -y jq
 fi
 
-# Helper function to pretty print JSON
 pretty_json() {
     echo "$1" | jq '.' 2>/dev/null || echo "$1"
 }
@@ -27,14 +29,13 @@ echo -e "${BLUE}  Persian Social Analyzer - Full Test    ${NC}"
 echo -e "${BLUE}==========================================${NC}"
 echo ""
 
-# Step 1: Health Checks
 echo -e "${YELLOW}━━━ Step 1: Health Checks ━━━${NC}"
 echo -e "${CYAN}Backend:${NC}"
-BACKEND_HEALTH=$(curl -s http://localhost:8000/health)
+BACKEND_HEALTH=$(curl -s "http://localhost:${BACKEND_PORT}/health")
 pretty_json "$BACKEND_HEALTH"
 
 echo -e "\n${CYAN}BRAIN:${NC}"
-BRAIN_HEALTH=$(curl -s $BRAIN_URL/health)
+BRAIN_HEALTH=$(curl -s "$BRAIN_URL/health")
 pretty_json "$BRAIN_HEALTH"
 echo ""
 
