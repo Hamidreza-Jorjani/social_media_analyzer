@@ -3,14 +3,13 @@ fastapi
 uvicorn[standard]
 python-multipart
 python-jose[cryptography]
-
-# Password Hashing
+passlib[bcrypt]
 bcrypt
-
 # Database
 sqlalchemy
 asyncpg
 alembic
+psycopg2-binary
 redis
 
 # HTTP Client
@@ -29,9 +28,17 @@ celery
 python-dateutil
 orjson
 
+# Logging
+loguru
+
 # Testing
 pytest
 pytest-asyncio
+pytest-cov
+aiosqlite
 
-# Logging
-loguru
+# Development
+black
+isort
+flake8
+mypy
