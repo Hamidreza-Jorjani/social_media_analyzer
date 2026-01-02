@@ -3,10 +3,10 @@ from celery import current_task
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 import asyncio
+import httpx
 
 from app.services.celery_app import celery_app
 from app.core.config import settings
-from app.services.brain_service import brain_service, BrainServiceError
 from loguru import logger
 
 # Create sync engine for Celery tasks
@@ -24,13 +24,46 @@ def get_sync_db() -> Session:
 
 
 def run_async(coro):
-    """Run async function in sync context."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    """Run async function in sync context - properly handles event loop."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
     try:
         return loop.run_until_complete(coro)
     finally:
-        loop.close()
+        # Don't close the loop, just clean up pending tasks
+        try:
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+        except RuntimeError:
+            pass
+
+
+def call_brain_sync(endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Synchronous HTTP call to BRAIN service."""
+    url = f"{settings.BRAIN_SERVICE_URL}{endpoint}"
+    
+    try:
+        with httpx.Client(timeout=settings.BRAIN_SERVICE_TIMEOUT) as client:
+            response = client.post(url, json=data)
+            response.raise_for_status()
+            return response.json()
+    except httpx.TimeoutException:
+        logger.error(f"BRAIN service timeout: {endpoint}")
+        raise Exception("BRAIN service timeout")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"BRAIN service HTTP error: {e.response.status_code}")
+        raise Exception(f"BRAIN service error: {e.response.text}")
+    except httpx.RequestError as e:
+        logger.error(f"BRAIN service connection error: {e}")
+        raise Exception("BRAIN service unavailable")
 
 
 @celery_app.task(bind=True, name="app.services.tasks.process_analysis")
@@ -60,7 +93,7 @@ def process_analysis(
         
         # Update status to processing
         analysis.status = AnalysisStatus.PROCESSING
-        analysis.started_at = datetime.utcnow().isoformat()
+        analysis.started_at = datetime.utcnow()
         analysis.progress = 0.0
         db.commit()
         
@@ -90,17 +123,10 @@ def process_analysis(
         db.commit()
         
         # Prepare posts data for BRAIN
-        posts_data = [
-            {
-                "id": str(p.id),
-                "content": p.content or "",
-                "platform": p.platform,
-                "posted_at": p.posted_at.isoformat() if p.posted_at else None
-            }
-            for p in posts
-        ]
+        texts = [p.content or "" for p in posts]
+        text_ids = [str(p.id) for p in posts]
         
-        # Analyze with BRAIN service
+        # Call BRAIN service synchronously
         try:
             analysis_config = config or {
                 "sentiment_enabled": True,
@@ -108,15 +134,16 @@ def process_analysis(
                 "keyword_extraction_enabled": True,
             }
             
-            # Run async BRAIN call
-            results = run_async(
-                brain_service.analyze_text(
-                    texts=[p["content"] for p in posts_data],
-                    text_ids=[p["id"] for p in posts_data],
-                    analysis_types=["sentiment", "emotion", "keywords"],
-                    config=analysis_config
-                )
-            )
+            request_data = {
+                "texts": texts,
+                "text_ids": text_ids,
+                "analysis_types": ["sentiment", "emotion", "keywords"],
+                "language": "fa",
+                "config": analysis_config
+            }
+            
+            result = call_brain_sync("/analyze/text", request_data)
+            results = result.get("results", [])
             
             # Update progress
             self.update_state(state="PROGRESS", meta={"progress": 50})
@@ -124,21 +151,24 @@ def process_analysis(
             db.commit()
             
             # Store results
-            for i, result in enumerate(results):
-                post_id = int(result.text_id)
+            for i, res in enumerate(results):
+                post_id = int(res.get("text_id", i))
+                
+                sentiment = res.get("sentiment", {})
+                emotions = res.get("emotions", {})
                 
                 analysis_result = AnalysisResult(
                     post_id=post_id,
                     analysis_id=analysis_id,
-                    sentiment_label=result.sentiment.get("label") if result.sentiment else None,
-                    sentiment_score=result.sentiment.get("score") if result.sentiment else None,
-                    sentiment_confidence=result.sentiment.get("confidence") if result.sentiment else None,
-                    emotions=result.emotions,
-                    dominant_emotion=max(result.emotions, key=result.emotions.get) if result.emotions else None,
-                    keywords=result.keywords,
-                    entities=result.entities,
-                    summary=result.summary,
-                    raw_results=result.model_dump()
+                    sentiment_label=sentiment.get("label"),
+                    sentiment_score=sentiment.get("score"),
+                    sentiment_confidence=sentiment.get("confidence"),
+                    emotions=emotions,
+                    dominant_emotion=res.get("dominant_emotion") or (max(emotions, key=emotions.get) if emotions else None),
+                    keywords=res.get("keywords"),
+                    entities=res.get("entities"),
+                    summary=res.get("summary"),
+                    raw_results=res
                 )
                 db.add(analysis_result)
                 
@@ -162,7 +192,7 @@ def process_analysis(
             # Complete analysis
             analysis.status = AnalysisStatus.COMPLETED
             analysis.progress = 100.0
-            analysis.completed_at = datetime.utcnow().isoformat()
+            analysis.completed_at = datetime.utcnow()
             analysis.summary = summary
             db.commit()
             
@@ -173,12 +203,12 @@ def process_analysis(
                 "results_count": len(results)
             }
             
-        except BrainServiceError as e:
-            logger.error(f"BRAIN service error: {e.message}")
+        except Exception as e:
+            logger.error(f"BRAIN service error: {str(e)}")
             analysis.status = AnalysisStatus.FAILED
-            analysis.error_message = f"BRAIN service error: {e.message}"
+            analysis.error_message = f"BRAIN service error: {str(e)}"
             db.commit()
-            return {"status": "error", "message": e.message}
+            return {"status": "error", "message": str(e)}
         
     except Exception as e:
         logger.error(f"Analysis task error: {str(e)}")
@@ -532,31 +562,36 @@ def calculate_pagerank(self) -> Dict[str, Any]:
         
         # Prepare data for BRAIN
         nodes_data = [{"id": n.node_id, "type": n.node_type} for n in nodes]
-        edges_data = [
-            {
-                "source": db.query(GraphNode).get(e.source_id).node_id,
-                "target": db.query(GraphNode).get(e.target_id).node_id,
-                "weight": e.weight
-            }
-            for e in edges
-        ]
+        edges_data = []
         
-        # Call BRAIN service
-        results = run_async(
-            brain_service.calculate_pagerank(
-                nodes=nodes_data,
-                edges=edges_data
-            )
-        )
+        for e in edges:
+            source = db.query(GraphNode).get(e.source_id)
+            target = db.query(GraphNode).get(e.target_id)
+            if source and target:
+                edges_data.append({
+                    "source": source.node_id,
+                    "target": target.node_id,
+                    "weight": e.weight
+                })
+        
+        # Call BRAIN service synchronously
+        request_data = {
+            "nodes": nodes_data,
+            "edges": edges_data,
+            "damping": 0.85
+        }
+        
+        result = call_brain_sync("/analyze/graph/pagerank", request_data)
+        pagerank_results = result.get("nodes", [])
         
         # Update nodes
         updated = 0
-        for result in results:
+        for pr in pagerank_results:
             node = db.query(GraphNode).filter(
-                GraphNode.node_id == result["id"]
+                GraphNode.node_id == pr["id"]
             ).first()
             if node:
-                node.pagerank = result.get("pagerank", 0)
+                node.pagerank = pr.get("pagerank", 0)
                 updated += 1
         
         db.commit()

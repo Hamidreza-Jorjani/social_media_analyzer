@@ -5,70 +5,61 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 BASE_URL="http://localhost:8000/api/v1"
 BRAIN_URL="http://localhost:8001"
 
-echo -e "${BLUE}=========================================${NC}"
-echo -e "${BLUE}  Persian Social Analyzer - Full Test   ${NC}"
-echo -e "${BLUE}=========================================${NC}"
+# Check if jq is installed
+if ! command -v jq &> /dev/null; then
+    echo -e "${RED}jq is not installed. Installing...${NC}"
+    sudo apt-get update && sudo apt-get install -y jq
+fi
+
+# Helper function to pretty print JSON
+pretty_json() {
+    echo "$1" | jq '.' 2>/dev/null || echo "$1"
+}
+
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${BLUE}  Persian Social Analyzer - Full Test    ${NC}"
+echo -e "${BLUE}==========================================${NC}"
 echo ""
 
 # Step 1: Health Checks
-echo -e "${YELLOW}Step 1: Health Checks${NC}"
-echo "Checking Backend..."
+echo -e "${YELLOW}━━━ Step 1: Health Checks ━━━${NC}"
+echo -e "${CYAN}Backend:${NC}"
 BACKEND_HEALTH=$(curl -s http://localhost:8000/health)
-echo "Backend: $BACKEND_HEALTH"
+pretty_json "$BACKEND_HEALTH"
 
-echo "Checking BRAIN..."
+echo -e "\n${CYAN}BRAIN:${NC}"
 BRAIN_HEALTH=$(curl -s $BRAIN_URL/health)
-echo "BRAIN: $BRAIN_HEALTH"
+pretty_json "$BRAIN_HEALTH"
 echo ""
 
 # Step 2: Login
-echo -e "${YELLOW}Step 2: Login as admin${NC}"
+echo -e "${YELLOW}━━━ Step 2: Login as admin ━━━${NC}"
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "Admin123!"}')
 
-echo "Login Response: $LOGIN_RESPONSE"
+echo -e "${CYAN}Login Response:${NC}"
+pretty_json "$LOGIN_RESPONSE"
 
 # Extract token
-TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('tokens', {}).get('access_token', '') if 'tokens' in data else '')" 2>/dev/null)
+TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.tokens.access_token // empty' 2>/dev/null)
 
 if [ -z "$TOKEN" ]; then
-    echo -e "${RED}Failed to get token. Creating admin user...${NC}"
-    
-    # Try to register
-    REGISTER_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/register" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "email": "admin@example.com",
-        "username": "admin",
-        "password": "Admin123!",
-        "full_name": "System Administrator"
-      }')
-    echo "Register Response: $REGISTER_RESPONSE"
-    
-    # Try login again
-    LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
-      -H "Content-Type: application/json" \
-      -d '{"username": "admin", "password": "Admin123!"}')
-    
-    TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('tokens', {}).get('access_token', '') if 'tokens' in data else '')" 2>/dev/null)
-fi
-
-if [ -z "$TOKEN" ]; then
-    echo -e "${RED}Still no token. Check the auth endpoints.${NC}"
+    echo -e "${RED}❌ Failed to get token${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}Got token: ${TOKEN:0:50}...${NC}"
+echo -e "\n${GREEN}✅ Got token: ${TOKEN:0:50}...${NC}"
 echo ""
 
 # Step 3: Create Data Source
-echo -e "${YELLOW}Step 3: Create Data Source${NC}"
+echo -e "${YELLOW}━━━ Step 3: Create Data Source ━━━${NC}"
 DATASOURCE_RESPONSE=$(curl -s -X POST "$BASE_URL/data-sources" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -78,14 +69,14 @@ DATASOURCE_RESPONSE=$(curl -s -X POST "$BASE_URL/data-sources" \
     "description": "Test data source for Persian tweets",
     "is_active": true
   }')
-echo "Data Source: $DATASOURCE_RESPONSE"
+pretty_json "$DATASOURCE_RESPONSE"
 
-DATASOURCE_ID=$(echo $DATASOURCE_RESPONSE | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('id', 1))" 2>/dev/null || echo "1")
-echo "Data Source ID: $DATASOURCE_ID"
+DATASOURCE_ID=$(echo $DATASOURCE_RESPONSE | jq -r '.id // 1' 2>/dev/null)
+echo -e "${CYAN}Data Source ID: $DATASOURCE_ID${NC}"
 echo ""
 
 # Step 4: Create Author
-echo -e "${YELLOW}Step 4: Create Author${NC}"
+echo -e "${YELLOW}━━━ Step 4: Create Author ━━━${NC}"
 AUTHOR_RESPONSE=$(curl -s -X POST "$BASE_URL/authors" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -99,14 +90,14 @@ AUTHOR_RESPONSE=$(curl -s -X POST "$BASE_URL/authors" \
     "following_count": 200,
     "posts_count": 150
   }')
-echo "Author: $AUTHOR_RESPONSE"
+pretty_json "$AUTHOR_RESPONSE"
 
-AUTHOR_ID=$(echo $AUTHOR_RESPONSE | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('id', 1))" 2>/dev/null || echo "1")
-echo "Author ID: $AUTHOR_ID"
+AUTHOR_ID=$(echo $AUTHOR_RESPONSE | jq -r '.id // 1' 2>/dev/null)
+echo -e "${CYAN}Author ID: $AUTHOR_ID${NC}"
 echo ""
 
 # Step 5: Create Posts (Bulk)
-echo -e "${YELLOW}Step 5: Create Posts (Bulk)${NC}"
+echo -e "${YELLOW}━━━ Step 5: Create Posts (Bulk) ━━━${NC}"
 POSTS_RESPONSE=$(curl -s -X POST "$BASE_URL/posts/bulk" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -224,33 +215,34 @@ POSTS_RESPONSE=$(curl -s -X POST "$BASE_URL/posts/bulk" \
       }
     ]
   }")
-echo "Posts Response: $POSTS_RESPONSE"
+pretty_json "$POSTS_RESPONSE"
 echo ""
 
 # Step 6: Verify Posts
-echo -e "${YELLOW}Step 6: Verify Posts${NC}"
-POSTS_LIST=$(curl -s "$BASE_URL/posts?page_size=5" \
+echo -e "${YELLOW}━━━ Step 6: Verify Posts ━━━${NC}"
+POSTS_LIST=$(curl -s "$BASE_URL/posts?page_size=3" \
   -H "Authorization: Bearer $TOKEN")
-echo "Posts List: $POSTS_LIST"
+echo -e "${CYAN}First 3 Posts:${NC}"
+echo "$POSTS_LIST" | jq '[.[:3][] | {id, platform, content: .content[:50], hashtags}]' 2>/dev/null || echo "$POSTS_LIST"
 echo ""
 
 # Step 7: Get Post Stats
-echo -e "${YELLOW}Step 7: Post Statistics${NC}"
+echo -e "${YELLOW}━━━ Step 7: Post Statistics ━━━${NC}"
 POST_STATS=$(curl -s "$BASE_URL/posts/stats" \
   -H "Authorization: Bearer $TOKEN")
-echo "Post Stats: $POST_STATS"
+pretty_json "$POST_STATS"
 echo ""
 
 # Step 8: Test BRAIN directly
-echo -e "${YELLOW}Step 8: Test BRAIN Service Directly${NC}"
+echo -e "${YELLOW}━━━ Step 8: Test BRAIN Service ━━━${NC}"
 BRAIN_TEST=$(curl -s -X POST "$BRAIN_URL/analyze/sentiment" \
   -H "Content-Type: application/json" \
   -d '{"texts": ["امروز خیلی خوشحالم!", "وضعیت خیلی بد است."]}')
-echo "BRAIN Sentiment Test: $BRAIN_TEST"
+pretty_json "$BRAIN_TEST"
 echo ""
 
 # Step 9: Create Analysis
-echo -e "${YELLOW}Step 9: Create Analysis${NC}"
+echo -e "${YELLOW}━━━ Step 9: Create Analysis ━━━${NC}"
 ANALYSIS_RESPONSE=$(curl -s -X POST "$BASE_URL/analysis" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -269,63 +261,82 @@ ANALYSIS_RESPONSE=$(curl -s -X POST "$BASE_URL/analysis" \
     },
     "post_count": 100
   }')
-echo "Analysis Created: $ANALYSIS_RESPONSE"
+pretty_json "$ANALYSIS_RESPONSE"
 
-ANALYSIS_ID=$(echo $ANALYSIS_RESPONSE | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('id', 1))" 2>/dev/null || echo "1")
-echo "Analysis ID: $ANALYSIS_ID"
+ANALYSIS_ID=$(echo $ANALYSIS_RESPONSE | jq -r '.id // 1' 2>/dev/null)
+echo -e "${CYAN}Analysis ID: $ANALYSIS_ID${NC}"
 echo ""
 
 # Step 10: Start Analysis
-echo -e "${YELLOW}Step 10: Start Analysis Processing${NC}"
+echo -e "${YELLOW}━━━ Step 10: Start Analysis Processing ━━━${NC}"
 START_RESPONSE=$(curl -s -X POST "$BASE_URL/analysis/$ANALYSIS_ID/start" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json")
-echo "Start Response: $START_RESPONSE"
+pretty_json "$START_RESPONSE"
 echo ""
 
 # Step 11: Wait and check progress
-echo -e "${YELLOW}Step 11: Checking Analysis Progress${NC}"
+echo -e "${YELLOW}━━━ Step 11: Checking Analysis Progress ━━━${NC}"
 for i in {1..10}; do
     sleep 2
     PROGRESS=$(curl -s "$BASE_URL/analysis/$ANALYSIS_ID/progress" \
       -H "Authorization: Bearer $TOKEN")
-    echo "Progress ($i): $PROGRESS"
     
-    STATUS=$(echo $PROGRESS | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('status', ''))" 2>/dev/null)
-    if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
+    STATUS=$(echo $PROGRESS | jq -r '.status // "unknown"' 2>/dev/null)
+    PROG_PCT=$(echo $PROGRESS | jq -r '.progress // 0' 2>/dev/null)
+    
+    if [ "$STATUS" = "completed" ]; then
+        echo -e "${GREEN}✅ Analysis completed! (Progress: $PROG_PCT%)${NC}"
         break
+    elif [ "$STATUS" = "failed" ]; then
+        echo -e "${RED}❌ Analysis failed!${NC}"
+        pretty_json "$PROGRESS"
+        break
+    else
+        echo -e "   ⏳ Status: $STATUS | Progress: $PROG_PCT%"
     fi
 done
 echo ""
 
 # Step 12: Get Analysis Results
-echo -e "${YELLOW}Step 12: Get Analysis Results${NC}"
-RESULTS=$(curl -s "$BASE_URL/analysis/$ANALYSIS_ID/results?page_size=5" \
+echo -e "${YELLOW}━━━ Step 12: Analysis Results (First 3) ━━━${NC}"
+RESULTS=$(curl -s "$BASE_URL/analysis/$ANALYSIS_ID/results?page_size=3" \
   -H "Authorization: Bearer $TOKEN")
-echo "Results: $RESULTS"
+echo "$RESULTS" | jq '[.[:3][] | {id, post_id, sentiment_label, sentiment_score: (.sentiment_score | tonumber | . * 100 | round / 100), dominant_emotion, keywords: .keywords[:3]}]' 2>/dev/null || echo "$RESULTS"
 echo ""
 
 # Step 13: Get Analysis Summary
-echo -e "${YELLOW}Step 13: Get Analysis Summary${NC}"
+echo -e "${YELLOW}━━━ Step 13: Analysis Summary ━━━${NC}"
 SUMMARY=$(curl -s "$BASE_URL/analysis/$ANALYSIS_ID/summary" \
   -H "Authorization: Bearer $TOKEN")
-echo "Summary: $SUMMARY"
+pretty_json "$SUMMARY"
 echo ""
 
-# Step 14: Test Dashboard
-echo -e "${YELLOW}Step 14: Dashboard Overview${NC}"
+# Step 14: Dashboard Overview
+echo -e "${YELLOW}━━━ Step 14: Dashboard Overview ━━━${NC}"
 DASHBOARD=$(curl -s "$BASE_URL/dashboard/overview" \
   -H "Authorization: Bearer $TOKEN")
-echo "Dashboard: $DASHBOARD"
+pretty_json "$DASHBOARD"
 echo ""
 
-# Step 15: Test Trends
-echo -e "${YELLOW}Step 15: Trending Hashtags${NC}"
+# Step 15: Trending Hashtags
+echo -e "${YELLOW}━━━ Step 15: Trending Hashtags ━━━${NC}"
 TRENDS=$(curl -s "$BASE_URL/trends/hashtags?hours=24&limit=10" \
   -H "Authorization: Bearer $TOKEN")
-echo "Trending Hashtags: $TRENDS"
+if [ "$TRENDS" = "[]" ]; then
+    echo -e "${CYAN}No trending hashtags yet (need more data)${NC}"
+else
+    pretty_json "$TRENDS"
+fi
 echo ""
 
-echo -e "${BLUE}=========================================${NC}"
-echo -e "${GREEN}  Test Complete!${NC}"
-echo -e "${BLUE}=========================================${NC}"
+# Final Summary
+echo -e "${BLUE}==========================================${NC}"
+echo -e "${GREEN}  ✅ Test Complete!${NC}"
+echo -e "${BLUE}==========================================${NC}"
+echo ""
+echo -e "${CYAN}Quick Stats:${NC}"
+echo "$POST_STATS" | jq -r '"  📝 Total Posts: \(.total)\n  ✅ Processed: \(.processed)\n  ⏳ Unprocessed: \(.unprocessed)"' 2>/dev/null
+echo ""
+echo "$SUMMARY" | jq -r '"  😊 Positive: \(.sentiment_distribution.positive // 0)\n  😐 Neutral: \(.sentiment_distribution.neutral // 0)\n  😞 Negative: \(.sentiment_distribution.negative // 0)"' 2>/dev/null
+echo ""

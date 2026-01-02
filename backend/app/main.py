@@ -7,7 +7,7 @@ from loguru import logger
 import sys
 
 from app.core.config import settings
-from app.database import init_db, close_db
+from app.database import init_db, close_db, AsyncSessionLocal
 from app.api.v1.router import api_router
 
 
@@ -30,14 +30,23 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     global redis_client
     
-    logger.info("Starting up Persian Social Analytics API...")
+    logger.info("🚀 Starting up Persian Social Analytics API...")
     
-    # Initialize database
+    # Initialize database tables
     try:
         await init_db()
-        logger.info("Database initialized successfully")
+        logger.info("✅ Database tables initialized")
     except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
+        logger.error(f"❌ Database initialization failed: {e}")
+    
+    # Auto-initialize default data (admin user, data sources, etc.)
+    if settings.AUTO_INIT_DB:
+        try:
+            from app.core.init_data import init_db_data
+            async with AsyncSessionLocal() as session:
+                await init_db_data(session)
+        except Exception as e:
+            logger.error(f"❌ Default data initialization failed: {e}")
     
     # Initialize Redis
     try:
@@ -47,12 +56,14 @@ async def lifespan(app: FastAPI):
             decode_responses=True
         )
         await redis_client.ping()
-        logger.info("Redis connected successfully")
+        logger.info("✅ Redis connected successfully")
     except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
+        logger.error(f"❌ Redis connection failed: {e}")
         redis_client = None
     
-    logger.info("Application startup complete!")
+    logger.info("✅ Application startup complete!")
+    logger.info(f"   API Docs: http://{settings.HOST}:{settings.PORT}/docs")
+    logger.info(f"   Admin User: {settings.DEFAULT_ADMIN_USERNAME}")
     
     yield
     

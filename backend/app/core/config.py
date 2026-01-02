@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Persian Social Analytics"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    SECRET_KEY: str
+    SECRET_KEY: str = "your-super-secret-key-change-in-production"
     API_V1_PREFIX: str = "/api/v1"
     
     # Server
@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
     
     # Database
-    DATABASE_URL: str
-    DATABASE_SYNC_URL: str
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/persian_analytics"
+    DATABASE_SYNC_URL: str = "postgresql://postgres:postgres@localhost:5432/persian_analytics"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    
+    # Default Admin User (created on startup)
+    DEFAULT_ADMIN_EMAIL: str = "admin@example.com"
+    DEFAULT_ADMIN_USERNAME: str = "admin"
+    DEFAULT_ADMIN_PASSWORD: str = "Admin123!"
+    
+    # Auto-initialization
+    AUTO_INIT_DB: bool = True
     
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

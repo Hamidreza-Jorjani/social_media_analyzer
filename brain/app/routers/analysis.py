@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncio
@@ -73,7 +73,7 @@ async def analyze_sentiment(request: SentimentRequest):
     for i, text in enumerate(request.texts):
         results.append({
             "text_id": text_ids[i],
-            "sentiment": generate_sentiment()
+            "sentiment": generate_sentiment(text)  # Pass text for analysis
         })
     
     return {"results": results}
@@ -88,7 +88,7 @@ async def analyze_emotions(request: SentimentRequest):
     
     results = []
     for i, text in enumerate(request.texts):
-        emotions = generate_emotions()
+        emotions = generate_emotions(text)  # Pass text for analysis
         results.append({
             "text_id": text_ids[i],
             "emotions": emotions,
@@ -110,21 +110,21 @@ async def analyze_text(request: TextAnalysisRequest):
         result = {"text_id": text_ids[i]}
         
         if "sentiment" in request.analysis_types:
-            result["sentiment"] = generate_sentiment()
+            result["sentiment"] = generate_sentiment(text)
         
         if "emotion" in request.analysis_types:
-            emotions = generate_emotions()
+            emotions = generate_emotions(text)
             result["emotions"] = emotions
             result["dominant_emotion"] = max(emotions, key=emotions.get)
         
         if "keywords" in request.analysis_types:
-            result["keywords"] = generate_keywords()
+            result["keywords"] = generate_keywords(text)
         
         if "entities" in request.analysis_types:
             result["entities"] = generate_entities(text)
         
         if "topics" in request.analysis_types:
-            result["topics"] = generate_topics()
+            result["topics"] = generate_topics(text)
         
         if "summary" in request.analysis_types:
             result["summary"] = generate_summary(text)
@@ -150,8 +150,8 @@ async def extract_keywords(request: KeywordRequest):
     await simulate_delay()
     
     keywords = [
-        generate_keywords(request.max_keywords) 
-        for _ in request.texts
+        generate_keywords(text, request.max_keywords) 
+        for text in request.texts
     ]
     
     return {"keywords": keywords}
@@ -172,14 +172,14 @@ async def detect_topics(request: TopicRequest):
     """Detect topics in texts."""
     await simulate_delay()
     
-    topics = generate_topics(request.num_topics)
+    # Global topics from all texts
+    all_text = " ".join(request.texts)
+    global_topics = generate_topics(all_text, request.num_topics)
     
     # Topic distribution per document
-    doc_topics = []
-    for _ in request.texts:
-        doc_topics.append(generate_topics(3))
+    doc_topics = [generate_topics(text, 3) for text in request.texts]
     
     return {
-        "global_topics": topics,
+        "global_topics": global_topics,
         "document_topics": doc_topics
     }
