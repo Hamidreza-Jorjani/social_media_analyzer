@@ -9,16 +9,7 @@
 ## Project Structure
 ```
 /home/great/projects/social_media_analyzer
-├── ai_document
-│   ├── API.md
-│   ├── OPENAPI.JSON
-│   ├── PERSIAN_ANALYZER_FULL_CODE_FOR_AI.txt
-│   └── TECHNICAL_FOR_MACHINE.md
 ├── app
-│   ├── dashboard
-│   │   └── page.tsx
-│   ├── globals.css
-│   └── layout.tsx
 ├── backend
 │   ├── alembic
 │   │   ├── versions
@@ -161,35 +152,72 @@
 │   └── redis
 │       ├── appendonlydir  [error opening dir]
 │       └── dump.rdb
+├── frontend
+│   ├── app
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components
+│   │   └── ui
+│   ├── lib
+│   │   ├── api
+│   │   ├── hooks
+│   │   ├── stores
+│   │   ├── utils
+│   │   ├── validations
+│   │   └── utils.ts
+│   ├── providers
+│   ├── public
+│   ├── types
+│   ├── next.config.ts
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── tailwind.config.ts
+│   └── tsconfig.json
 ├── scripts
+│   ├── ai_context
+│   │   ├── backend_health.json
+│   │   ├── brain_health.json
+│   │   ├── openapi.json
+│   │   └── status.json
 │   ├── collect_docker_debug.sh
+│   ├── collect_frontend_context.sh
+│   ├── frontend_context_short.md
+│   ├── frontend_live_context.txt
+│   ├── full_test.sh
 │   ├── generate_docs.sh
 │   ├── get_context.sh
+│   ├── get_frontend_live.sh
+│   ├── get_frontend_live_short.sh
 │   ├── help.sh
+│   ├── sma_diagnose.sh
 │   ├── test_full_flow.sh
 │   └── test_integration.sh
 ├── tests
 │   ├── lib
 │   │   └── common.sh
 │   ├── results
+│   ├── tests
+│   │   └── results
+│   ├── run_all.sh
+│   ├── test_analysis.sh
 │   ├── test_auth.sh
 │   ├── test_brain.sh
 │   ├── test_health.sh
+│   ├── test_performance.sh
 │   └── test_posts.sh
 ├── Dockerfile.legacy
-├── PROJECT_CONTEXT.md
 ├── PROJECT_FULL_CONTEXT.md
 ├── README.md
 ├── cleanup.sh
 ├── docker-compose.yml.legacy
-├── full_test.sh
+├── package.json
 ├── rebuild.sh
-├── sma_diagnose.sh
 ├── start.sh
 ├── stop.sh
 └── update.sh
 
-32 directories, 148 files
+46 directories, 162 files
 ```
 
 ## Database Models

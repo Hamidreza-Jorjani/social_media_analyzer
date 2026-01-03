@@ -21,3 +21,4 @@ EOF
 
 # Local data directories (persistent storage)
 data/
+node_modules
