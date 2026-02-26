@@ -154,32 +154,122 @@
 │       └── dump.rdb
 ├── frontend
 │   ├── app
+│   │   ├── (auth)
+│   │   │   ├── login
+│   │   │   │   └── page.tsx
+│   │   │   ├── register
+│   │   │   │   └── page.tsx
+│   │   │   └── layout.tsx
+│   │   ├── (dashboard)
+│   │   │   ├── analysis
+│   │   │   │   └── new
+│   │   │   ├── authors
+│   │   │   ├── dashboard
+│   │   │   │   ├── analysis
+│   │   │   │   │   ├── [id]
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── new
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── authors
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── graph
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── posts
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── settings
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── trends
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── graph
+│   │   │   ├── posts
+│   │   │   ├── settings
+│   │   │   ├── trends
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
 │   ├── components
+│   │   ├── charts
+│   │   ├── graph
+│   │   │   └── network-graph.tsx
+│   │   ├── layout
+│   │   ├── shared
 │   │   └── ui
+│   │       ├── avatar.tsx
+│   │       ├── badge.tsx
+│   │       ├── button.tsx
+│   │       ├── card.tsx
+│   │       ├── dialog.tsx
+│   │       ├── dropdown-menu.tsx
+│   │       ├── index.ts
+│   │       ├── input.tsx
+│   │       ├── label.tsx
+│   │       ├── progress.tsx
+│   │       ├── scroll-area.tsx
+│   │       ├── select.tsx
+│   │       ├── separator.tsx
+│   │       ├── skeleton.tsx
+│   │       ├── switch.tsx
+│   │       ├── table.tsx
+│   │       ├── tabs.tsx
+│   │       ├── textarea.tsx
+│   │       └── tooltip.tsx
 │   ├── lib
 │   │   ├── api
+│   │   │   ├── analysis.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── authors.ts
+│   │   │   ├── client.ts
+│   │   │   ├── dashboard.ts
+│   │   │   ├── graph.ts
+│   │   │   ├── index.ts
+│   │   │   ├── posts.ts
+│   │   │   └── trends.ts
 │   │   ├── hooks
 │   │   ├── stores
+│   │   │   ├── auth-store.ts
+│   │   │   └── index.ts
 │   │   ├── utils
-│   │   ├── validations
 │   │   └── utils.ts
 │   ├── providers
+│   │   └── index.tsx
 │   ├── public
 │   ├── types
+│   │   └── index.ts
+│   ├── check_state.sh
+│   ├── check_syntax.sh
+│   ├── components.json
+│   ├── diagnose.sh
+│   ├── next-env.d.ts
 │   ├── next.config.ts
 │   ├── package.json
+│   ├── pnpm-lock.yaml
+│   ├── pnpm-workspace.yaml
 │   ├── postcss.config.mjs
+│   ├── run_all_steps.sh
+│   ├── setup_step10.sh
+│   ├── setup_step11.sh
+│   ├── setup_step3.sh
+│   ├── setup_step4.sh
+│   ├── setup_step5.sh
+│   ├── setup_step6.sh
+│   ├── setup_step7.sh
+│   ├── setup_step8.sh
+│   ├── setup_step9.sh
 │   ├── tailwind.config.ts
-│   └── tsconfig.json
+│   ├── tsconfig.json
+│   ├── tsconfig.tsbuildinfo
+│   └── verify_content.sh
 ├── scripts
 │   ├── ai_context
 │   │   ├── backend_health.json
 │   │   ├── brain_health.json
 │   │   ├── openapi.json
 │   │   └── status.json
+│   ├── result
 │   ├── collect_docker_debug.sh
 │   ├── collect_frontend_context.sh
 │   ├── frontend_context_short.md
@@ -211,13 +301,12 @@
 ├── README.md
 ├── cleanup.sh
 ├── docker-compose.yml.legacy
-├── package.json
 ├── rebuild.sh
 ├── start.sh
 ├── stop.sh
 └── update.sh
 
-46 directories, 162 files
+70 directories, 227 files
 ```
 
 ## Database Models
